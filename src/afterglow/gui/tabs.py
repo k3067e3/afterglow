@@ -14,7 +14,8 @@ from ..qt.QtGui import QFont
 from .build_service import BuildWorker as ConfigBuildWorker
 from .project import (mark_device_new, new_device_ids)
 
-from .activity_wizard import ActivityEditor, ActivityWizard, one_activity_a_button
+from .activity_wizard import (ActivityEditor, ActivityStartDialog, ActivityWizard,
+                              one_activity_a_button)
 from .icons import pixmap as type_pixmap
 from .constants import user_folder
 from .device_wizard import DeviceEditor, DeviceWizard
@@ -364,10 +365,24 @@ class ActivitiesTab(QWidget):
             QMessageBox.information(self, "No Devices",
                                     "Add at least one device before creating an activity.")
             return
-        wiz = ActivityWizard(devs, self,
-                             taken_ids=[a.get("id") for a in self.project["activities"]],
+        acts = self.project["activities"]
+        template, title = None, None
+        if acts:
+            # Empty, or a copy of an existing activity to change only what differs.
+            start = ActivityStartDialog(acts, self)
+            chosen = start.exec()
+            index = start.template_index()
+            start.deleteLater()
+            if not chosen:
+                return
+            if index is not None:
+                from ..activity_copy import activity_template
+                template = activity_template(acts[index], acts)
+                title = f'Add Activity - copy of "{acts[index].get("label") or "activity"}"'
+        wiz = ActivityWizard(devs, self, existing=template, title=title,
+                             taken_ids=[a.get("id") for a in acts],
                              remote=project_remote(self.project),
-                             activities=self.project["activities"])
+                             activities=acts)
         if wiz.exec() and wiz.result_spec:
             self.project["activities"].append(wiz.result_spec)
             one_activity_a_button(self.project["activities"], wiz.result_spec)
