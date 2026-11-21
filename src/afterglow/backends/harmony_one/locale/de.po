@@ -11,7 +11,7 @@ msgstr ""
 #. The Activities screen: a screen's title, top left; about 96 pixels in the title font
 msgctxt "hub.activities-title"
 msgid "My Activities"
-msgstr "Eigene Aktivitäten"
+msgstr "Aktivitäten Waldmax"
 
 #. The Activities screen when there are none: a message centred on the screen; about 160 pixels a line
 msgctxt "hub.no-activities"
@@ -21,7 +21,7 @@ msgstr "Keine Aktivitäten"
 #. The device list: a screen's title, top left; about 96 pixels in the title font
 msgctxt "hub.devices-title"
 msgid "Devices"
-msgstr "Geräte"
+msgstr "Geräte Waldmax"
 
 #. The device list when there are none: a message centred on the screen; about 160 pixels a line
 msgctxt "hub.no-devices"
