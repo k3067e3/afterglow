@@ -5,7 +5,7 @@ import copy
 from ..qt.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QComboBox,
     QTableWidget, QTableWidgetItem, QListWidget, QListWidgetItem,
-    QSplitter, QAbstractItemView, QHeaderView, QWizardPage
+    QSplitter, QAbstractItemView, QHeaderView, QWizardPage, QRadioButton
 )
 from ..qt.QtCore import Qt, QSize, pyqtSignal
 
@@ -55,8 +55,11 @@ GENERIC_TYPE = "VirtualGeneric"
 
 class ActivityWizard(StepWizard):
     def __init__(self, devices, parent=None, existing=None, taken_ids=None, remote=None,
-                 activities=None):
-        super().__init__("Add Activity" if not existing else "Edit Activity", parent)
+                 activities=None, title=None):
+        # `title`: a new activity started from a copy (see `activity_copy`) comes with
+        # an `existing` spec but is still being added, not edited
+        super().__init__(title or ("Add Activity" if not existing else "Edit Activity"),
+                         parent)
         profile = vocabulary.for_remote(remote)
         self._taken_ids = list(taken_ids or [])
         self.devices = devices
@@ -155,6 +158,56 @@ class ActivityWizard(StepWizard):
         apply_plan(spec, self.power_page.get_plan(), self.power_page.leave())
         self._assets = p3.get_assets()
         return spec
+
+
+class ActivityStartDialog(QDialog):
+    """Before adding an activity: start empty, or from a copy of an existing one.
+
+    A copy goes through the same steps as a new activity, every page filled in from
+    the template, so only what differs has to be changed.
+    """
+
+    def __init__(self, activities, parent=None):
+        super().__init__(parent)
+        from ..activity_copy import template_choices
+        self.setWindowTitle("Add Activity")
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("How should the new activity start?"))
+
+        self.empty_radio = QRadioButton("Empty - set everything up from scratch")
+        self.copy_radio = QRadioButton("As a copy of an existing activity:")
+        self.template_combo = QComboBox()
+        for text, index in template_choices(activities):
+            self.template_combo.addItem(text, index)
+        self.template_combo.setToolTip(
+            "Devices, inputs, buttons, favourites, power and properties are copied. "
+            "The copy gets its own name and ID and does not take the original's "
+            "activity button.")
+
+        can_copy = self.template_combo.count() > 0
+        self.copy_radio.setEnabled(can_copy)
+        self.empty_radio.setChecked(True)
+        self.template_combo.setEnabled(False)
+        self.copy_radio.toggled.connect(self.template_combo.setEnabled)
+
+        layout.addWidget(self.empty_radio)
+        layout.addWidget(self.copy_radio)
+        row = QHBoxLayout()
+        row.addSpacing(24)
+        row.addWidget(self.template_combo, stretch=1)
+        layout.addLayout(row)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
+                                   | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def template_index(self):
+        """Index of the activity to copy, or None for an empty one."""
+        if self.copy_radio.isChecked() and self.template_combo.count():
+            return self.template_combo.currentData()
+        return None
 
 
 def _listed(names: list[str]) -> str:
